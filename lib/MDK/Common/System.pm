@@ -39,6 +39,15 @@ find the first corresponding magic in FILENAME. eg of LIST:
     [ 'empty', 0, "\0\0\0\0" ],
     [ 'grub', 0, "\xEBG", 0x17d, "stage1 \0" ],
     [ 'lilo', 0x2,  "LILO" ],
+    sub { my ($F) = @_;
+	  #- standard grub has no good magic (Mageia's grub is patched to have "GRUB" at offset 6)
+	  #- so scanning a range of possible places where grub can have its string
+	  my ($min, $max, $magic) = (0x176, 0x181, "GRUB \0");
+	  my $tmp;
+	  sysseek($F, 0, 0) && sysread($F, $tmp, $max + length($magic)) or return;
+	  substr($tmp, 0, 2) eq "\xEBH" or return;
+	  index($tmp, $magic, $min) >= 0 && "grub";
+      },
 
 where each entry is [ magic_name, offset, string, offset, string, ... ].
 
@@ -77,8 +86,6 @@ size of swap + memory
 
 size of RAM as reported by the BIOS (it is a round number that can be
 displayed or given as "mem=128M" to the kernel)
-
-!! "mem=..." is dangerous in 2.4 kernels
 
 =item gettimeofday()
 
